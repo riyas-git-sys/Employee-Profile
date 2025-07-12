@@ -46,4 +46,17 @@ A responsive and interactive Employee Management Web App built with vanilla Java
 
 
 ## 📂 Project Structure
-
+```
+src/
+├── main/
+│   └── resources/
+│       ├── templates/
+│       │   └── index.ftlh           # Main Freemarker template
+│       └── static/
+│           ├── css/
+│           │   └── styles.css       # Complete CSS styles
+│           └── js/
+│               ├── data.js          # Mock employee data
+│               └── app.js           # Main application logic
+└── README.md
+```
