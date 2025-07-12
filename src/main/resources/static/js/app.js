@@ -7,20 +7,24 @@ function debounce(func, delay) {
     };
 }
 
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', function() {
     const state = {
-        employees: [...mockEmployees],
+        employees: window.mockEmployees || [...mockEmployees], // Using your externally linked data
         currentView: 'dashboard',
         editingId: null,
         currentPage: 1,
         itemsPerPage: 5,
-        filteredEmployees: [...mockEmployees],
+        filteredEmployees: window.mockEmployees || [...mockEmployees],
         searchTerm: '',
         departmentFilter: '',
         roleFilter: ''
     };
 
     const appEl = document.getElementById('app');
+    if (!appEl) {
+        console.error('App element not found');
+        return;
+    }
 
     function render() {
         if (state.currentView === 'dashboard') {
@@ -30,18 +34,10 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    const debouncedSearch = debounce(() => {
-        const searchInput = document.getElementById('search');
-        const departmentSelect = document.getElementById('filter-department');
-        const roleSelect = document.getElementById('filter-role');
-
-        const term = searchInput?.value.toLowerCase() || '';
-        const dept = departmentSelect?.value || '';
-        const role = roleSelect?.value || '';
-
-        state.searchTerm = term;
-        state.departmentFilter = dept;
-        state.roleFilter = role;
+    function filterEmployees() {
+        const term = state.searchTerm.toLowerCase();
+        const dept = state.departmentFilter;
+        const role = state.roleFilter;
 
         state.filteredEmployees = state.employees.filter(emp => {
             const matchesSearch = `${emp.firstName} ${emp.lastName}`.toLowerCase().includes(term) ||
@@ -51,37 +47,36 @@ document.addEventListener('DOMContentLoaded', function () {
             return matchesSearch && matchesDept && matchesRole;
         });
 
-        state.currentPage = 1;
-        render();
-    }, 3000);
+        // Adjust current page if it's now out of bounds
+        const totalPages = Math.ceil(state.filteredEmployees.length / state.itemsPerPage);
+        if (state.currentPage > totalPages && totalPages > 0) {
+            state.currentPage = totalPages;
+        } else if (totalPages === 0) {
+            state.currentPage = 1;
+        }
+    }
+
+    const debouncedSearch = debounce(() => {
+        const searchInput = document.getElementById('search');
+        if (searchInput) {
+            state.searchTerm = searchInput.value;
+            filterEmployees();
+            render();
+        }
+    }, 300);
+
+    function getRandomColor() {
+        const colors = ['#FF5733', '#33B5E5', '#FFB400', '#00C851', '#AA66CC', '#FF4444', '#0099CC', '#33DDFF'];
+        return colors[Math.floor(Math.random() * colors.length)];
+    }
 
     function renderDashboard() {
+        filterEmployees(); // Ensure filters are applied before rendering
+        
         const startIndex = (state.currentPage - 1) * state.itemsPerPage;
         const endIndex = startIndex + state.itemsPerPage;
         const paginatedEmployees = state.filteredEmployees.slice(startIndex, endIndex);
         const totalPages = Math.ceil(state.filteredEmployees.length / state.itemsPerPage);
-        const searchInput = document.getElementById('search');
-        const clearBtn = document.getElementById('clear-search');
-
-        if (searchInput) {
-            searchInput.value = state.searchTerm;
-            searchInput.focus();
-            searchInput.setSelectionRange(searchInput.value.length, searchInput.value.length);
-
-            clearBtn.style.display = state.searchTerm ? 'inline' : 'none';
-
-            searchInput.addEventListener('input', () => {
-                clearBtn.style.display = searchInput.value ? 'inline' : 'none';
-            });
-
-            clearBtn.addEventListener('click', () => {
-                searchInput.value = '';
-                state.searchTerm = '';
-                state.filteredEmployees = [...state.employees];
-                state.currentPage = 1;
-                render();
-            });
-        }
 
         appEl.innerHTML = `
             <div class="modal-overlay hidden" id="form-modal">
@@ -92,7 +87,7 @@ document.addEventListener('DOMContentLoaded', function () {
             <header>
                 <div class="logo">
                     <div class="logo-text">
-                        <a href="https://ibb.co/mFJJz2vn"><img src="https://i.ibb.co/rfkkyzbB/emplogo.webp" alt="emplogo" border="0" height="80" width="80"></a>
+                        <img src="https://i.ibb.co/rfkkyzbB/emplogo.webp" alt="emplogo" height="80" width="80">
                     </div>
                     <div class="filters-mob-view">
                         <select class="filter-select" id="filter-department">
@@ -114,16 +109,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 <div class="controls">
                     <div class="search-container">
                         <input type="text" id="search" placeholder="Search employees..." value="${state.searchTerm}" />
+                        <button id="clear-search" class="clear-btn" style="display: ${state.searchTerm ? 'inline' : 'none'}">×</button>
                     </div>
                     <div class="filters-lap-view">
-                        <select class="filter-select" id="filter-department">
+                        <select class="filter-select" id="filter-department-lap">
                             <option value="">All Departments</option>
                             <option value="HR">HR</option>
                             <option value="IT">IT</option>
                             <option value="Finance">Finance</option>
                             <option value="Marketing">Marketing</option>
                         </select>
-                        <select class="filter-select" id="filter-role">
+                        <select class="filter-select" id="filter-role-lap">
                             <option value="">All Roles</option>
                             <option value="Manager">Manager</option>
                             <option value="Developer">Developer</option>
@@ -147,19 +143,27 @@ document.addEventListener('DOMContentLoaded', function () {
             </div>
 
             <div class="employee-list">
-                ${paginatedEmployees.map(emp => `
-                    <div class="employee-card" data-id="${emp.id}">
-                        <h3>${emp.firstName} ${emp.lastName}</h3>
-                        <p><strong>ID:</strong> ${emp.id}</p>
-                        <p><strong>Email:</strong> ${emp.email}</p>
-                        <p><strong>Department:</strong> ${emp.department}</p>
-                        <p><strong>Role:</strong> ${emp.role}</p>
-                        <div class="actions">
-                            <button class="edit-btn" data-id="${emp.id}">Edit</button>
-                            <button class="delete-btn" data-id="${emp.id}" data-name="${emp.firstName} ${emp.lastName}">Delete</button>
+                ${paginatedEmployees.length > 0 ? 
+                    paginatedEmployees.map(emp => `
+                        <div class="employee-card" data-id="${emp.id}">
+                            <div class="emp-logo">
+                                <div class="emp-logo-text" style="background-color: ${getRandomColor()}">
+                                    ${emp.firstName[0]}${emp.lastName[0]}
+                                </div>
+                                <h3 class="emp-name">${emp.firstName} ${emp.lastName}</h3>
+                            </div>
+                            <p><strong>ID:</strong> ${emp.id}</p>
+                            <p><strong>Email:</strong> ${emp.email}</p>
+                            <p><strong>Department:</strong> ${emp.department}</p>
+                            <p><strong>Role:</strong> ${emp.role}</p>
+                            <div class="actions">
+                                <button class="edit-btn" data-id="${emp.id}">Edit</button>
+                                <button class="delete-btn" data-id="${emp.id}" data-name="${emp.firstName} ${emp.lastName}">Delete</button>
+                            </div>
                         </div>
-                    </div>
-                `).join('')}
+                    `).join('') : 
+                    '<div class="no-results">No employees found matching your criteria</div>'
+                }
             </div>
 
             <div class="plus-btn">
@@ -175,67 +179,91 @@ document.addEventListener('DOMContentLoaded', function () {
             ` : ''}
         `;
 
-        document.getElementById('search').addEventListener('input', debouncedSearch);
-        document.getElementById('filter-department').value = state.departmentFilter;
-        document.getElementById('filter-role').value = state.roleFilter;
-        document.getElementById('filter-department').addEventListener('change', debouncedSearch);
-        document.getElementById('filter-role').addEventListener('change', debouncedSearch);
+        // Set filter values
+        ['filter-department', 'filter-department-lap'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = state.departmentFilter;
+        });
+        
+        ['filter-role', 'filter-role-lap'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = state.roleFilter;
+        });
 
-        document.getElementById('add-employee').addEventListener('click', () => {
+        // Event listeners
+        const searchInput = document.getElementById('search');
+        if (searchInput) {
+            searchInput.addEventListener('input', debouncedSearch);
+        }
+
+        document.getElementById('clear-search')?.addEventListener('click', () => {
+            state.searchTerm = '';
+            filterEmployees();
+            render();
+        });
+
+        const handleFilterChange = () => {
+            const deptFilter = document.getElementById('filter-department') || document.getElementById('filter-department-lap');
+            const roleFilter = document.getElementById('filter-role') || document.getElementById('filter-role-lap');
+            
+            if (deptFilter) state.departmentFilter = deptFilter.value;
+            if (roleFilter) state.roleFilter = roleFilter.value;
+            
+            filterEmployees();
+            render();
+        };
+
+        ['filter-department', 'filter-role', 'filter-department-lap', 'filter-role-lap'].forEach(id => {
+            document.getElementById(id)?.addEventListener('change', handleFilterChange);
+        });
+
+        document.getElementById('add-employee')?.addEventListener('click', showEmployeeForm);
+        document.getElementById('add-employee-circle')?.addEventListener('click', showEmployeeForm);
+
+        function showEmployeeForm() {
             state.currentView = 'form';
             state.editingId = null;
             renderForm();
             document.getElementById('form-modal').classList.remove('hidden');
-        });
+        }
 
-        document.getElementById('add-employee-circle').addEventListener('click', () => {
-            state.currentView = 'form';
-            state.editingId = null;
-            renderForm();
-            document.getElementById('form-modal').classList.remove('hidden');
+        document.querySelectorAll('.edit-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const id = parseInt(e.target.dataset.id);
+                state.editingId = id;
+                state.currentView = 'form';
+                renderForm();
+                document.getElementById('form-modal').classList.remove('hidden');
+            });
         });
-
-        document.querySelectorAll('.edit-btn').forEach(btn => btn.addEventListener('click', (e) => {
-            const id = parseInt(e.target.dataset.id);
-            state.editingId = id;
-            state.currentView = 'form';
-            renderForm();
-            document.getElementById('form-modal').classList.remove('hidden');
-        }));
 
         let employeeIdToDelete = null;
-
         document.querySelectorAll('.delete-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 employeeIdToDelete = parseInt(e.target.dataset.id);
                 const empName = e.target.dataset.name;
                 const modal = document.getElementById('delete-confirmation-modal');
-                document.getElementById('delete-message').textContent = `Are you sure you want to delete profile of ${empName}?`;
-                if (modal) modal.classList.remove('hidden');
+                if (modal) {
+                    document.getElementById('delete-message').textContent = 
+                        `Are you sure you want to delete profile of ${empName}?`;
+                    modal.classList.remove('hidden');
+                }
             });
         });
-
-        const modal = document.getElementById('delete-confirmation-modal');
 
         document.getElementById('confirm-delete')?.addEventListener('click', () => {
             if (employeeIdToDelete !== null) {
                 state.employees = state.employees.filter(emp => emp.id !== employeeIdToDelete);
-                state.filteredEmployees = state.filteredEmployees.filter(emp => emp.id !== employeeIdToDelete);
-
-                const startIdx = (state.currentPage - 1) * state.itemsPerPage;
-                if (startIdx >= state.filteredEmployees.length && state.currentPage > 1) {
-                    state.currentPage--;
-                }
-
-                modal.classList.add('hidden');
                 employeeIdToDelete = null;
+                filterEmployees();
                 render();
+                document.getElementById('delete-confirmation-modal').classList.add('hidden');
             }
         });
 
         document.getElementById('cancel-delete')?.addEventListener('click', () => {
-            modal.classList.add('hidden');
             employeeIdToDelete = null;
+            document.getElementById('delete-confirmation-modal').classList.add('hidden');
         });
 
         document.getElementById('prev-page')?.addEventListener('click', () => {
@@ -246,6 +274,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         document.getElementById('next-page')?.addEventListener('click', () => {
+            const totalPages = Math.ceil(state.filteredEmployees.length / state.itemsPerPage);
             if (state.currentPage < totalPages) {
                 state.currentPage++;
                 render();
@@ -254,31 +283,33 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function renderForm() {
-        const emp = state.employees.find(emp => emp.id === state.editingId) || {};
-        document.getElementById('form-container').innerHTML = `
+        const emp = state.editingId ? 
+            state.employees.find(emp => emp.id === state.editingId) : 
+            { firstName: '', lastName: '', email: '', department: '', role: '' };
+
+        const formContainer = document.getElementById('form-container');
+        if (!formContainer) return;
+
+        formContainer.innerHTML = `
             <h2>${state.editingId ? 'Edit' : 'Add'} Employee</h2>
             <form class="employee-form" id="employee-form">
-                <input type="text" id="firstName" value="${emp.firstName || ''}" placeholder="First Name" required />
+                <input type="text" id="firstName" value="${emp.firstName}" placeholder="First Name" required />
                 <div class="error" id="firstName-error"></div>
-                <input type="text" id="lastName" value="${emp.lastName || ''}" placeholder="Last Name" required />
+                <input type="text" id="lastName" value="${emp.lastName}" placeholder="Last Name" required />
                 <div class="error" id="lastName-error"></div>
-                <input type="email" id="email" value="${emp.email || ''}" placeholder="Email" required />
+                <input type="email" id="email" value="${emp.email}" placeholder="Email" required />
                 <div class="error" id="email-error"></div>
-                <select id="department">
+                <select id="department" required>
                     <option value="">Select Department</option>
                     <option value="HR" ${emp.department === 'HR' ? 'selected' : ''}>HR</option>
                     <option value="IT" ${emp.department === 'IT' ? 'selected' : ''}>IT</option>
                     <option value="Finance" ${emp.department === 'Finance' ? 'selected' : ''}>Finance</option>
                     <option value="Marketing" ${emp.department === 'Marketing' ? 'selected' : ''}>Marketing</option>
-                    <option value="Operations" ${emp.department === 'Operations' ? 'selected' : ''}>Operations</option>
-                    <option value="Sales" ${emp.department === 'Sales' ? 'selected' : ''}>Sales</option>
                 </select>
                 <div class="error" id="department-error"></div>
-                <select id="role">
+                <select id="role" required>
                     <option value="">Select Role</option>
-                    <option value="Employee" ${emp.role === 'Employee' ? 'selected' : ''}>Employee</option>
                     <option value="Manager" ${emp.role === 'Manager' ? 'selected' : ''}>Manager</option>
-                    <option value="Director" ${emp.role === 'Director' ? 'selected' : ''}>Director</option>
                     <option value="Developer" ${emp.role === 'Developer' ? 'selected' : ''}>Developer</option>
                     <option value="Analyst" ${emp.role === 'Analyst' ? 'selected' : ''}>Analyst</option>
                     <option value="Designer" ${emp.role === 'Designer' ? 'selected' : ''}>Designer</option>
@@ -291,23 +322,26 @@ document.addEventListener('DOMContentLoaded', function () {
             </form>
         `;
 
-        document.getElementById('cancel-btn').addEventListener('click', () => {
+        document.getElementById('cancel-btn')?.addEventListener('click', () => {
             document.getElementById('form-modal').classList.add('hidden');
             state.currentView = 'dashboard';
             render();
         });
 
-        document.getElementById('employee-form').addEventListener('submit', (e) => {
+        document.getElementById('employee-form')?.addEventListener('submit', (e) => {
             e.preventDefault();
-
+            
+            // Clear previous errors
             document.querySelectorAll('.error').forEach(el => el.textContent = '');
 
+            // Get form values
             const firstName = document.getElementById('firstName').value.trim();
             const lastName = document.getElementById('lastName').value.trim();
             const email = document.getElementById('email').value.trim();
             const department = document.getElementById('department').value;
             const role = document.getElementById('role').value;
 
+            // Validation
             let isValid = true;
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -337,29 +371,36 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (!isValid) return;
 
-            const newEmp = {
+            // Create/update employee
+            const employee = {
                 id: state.editingId || Date.now(),
                 firstName,
                 lastName,
                 email,
                 department,
-                role,
+                role
             };
 
             if (state.editingId) {
-                const idx = state.employees.findIndex(emp => emp.id === state.editingId);
-                state.employees[idx] = newEmp;
+                // Update existing employee
+                const index = state.employees.findIndex(e => e.id === state.editingId);
+                if (index !== -1) {
+                    state.employees[index] = employee;
+                }
             } else {
-                state.employees.unshift(newEmp);
+                // Add new employee
+                state.employees.unshift(employee);
             }
 
-            state.filteredEmployees = [...state.employees];
+            // Reset and render
             state.editingId = null;
             state.currentView = 'dashboard';
             document.getElementById('form-modal').classList.add('hidden');
+            filterEmployees();
             render();
         });
     }
 
+    // Initial render
     render();
 });
