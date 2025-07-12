@@ -30,7 +30,7 @@ A responsive and interactive Employee Management Web App built with vanilla Java
 
 ## 🚀 Live Demo
 
-- 🔗 [Live Demo](https://your-live-link.netlify.app)
+- 🔗 [Live Demo](https://employee-profile-six.vercel.app/)
 - 🔗 [GitHub Repository](https://github.com/yourusername/employee-directory-app)
 
 ## 📸 Screenshots
