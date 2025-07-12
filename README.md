@@ -35,9 +35,15 @@ A responsive and interactive Employee Management Web App built with vanilla Java
 
 ## 📸 Screenshots
 
-<!-- Add screenshot images here -->
-<!-- ![Dashboard View](link-to-image) -->
-<!-- ![Form Modal](link-to-image) -->
+### 🖼️ Dashboard View
+![Dashboard Screenshot](https://i.ibb.co/MkzKbHf7/Screenshot-2025-07-12-151840.png)
+
+### 🖊️ Edit Employee View
+![Add Employee Screenshot](https://i.ibb.co/TMBgnjrM/Screenshot-2025-07-12-151910.png )
+
+### 🔍 Search and Pagination
+![Add Employee Data Screenshot](https://i.ibb.co/S4xqMMTp/Screenshot-2025-07-12-151923.png)
+
 
 ## 📂 Project Structure
 
