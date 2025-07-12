@@ -31,7 +31,7 @@ A responsive and interactive Employee Management Web App built with vanilla Java
 ## 🚀 Live Demo
 
 - 🔗 [Live Demo](https://employee-profile-six.vercel.app/)
-- 🔗 [GitHub Repository](https://github.com/yourusername/employee-directory-app)
+- 🔗 [GitHub Repository](https://github.com/riyas-git-sys/Employee-Profile/tree/main)
 
 ## 📸 Screenshots
 
